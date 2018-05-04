@@ -1,0 +1,125 @@
+#!/usr/bin/env python
+
+import collections
+import cv2
+import argparse
+import numpy
+
+from sample.cameraprojection import CameraProjection
+from sample.meshrenderer import RenderMesh
+from sample.utils import LoadDataJson
+
+import dcel
+
+
+def show_json():
+    tensor = LoadDataJson('tensor-basel.json')
+    for k in tensor:
+        print k
+
+
+def show_mesh():
+    tensor = LoadDataJson('tensor-basel.json')
+
+    tensorMods = numpy.array(tensor['vertices'])
+    faces = tensor['faces']
+
+    mesh = { 'vertices' : tensorMods[0] + numpy.array([0, 0, -300]), 'faces' : faces }
+
+    print('vertices')
+    print(mesh['vertices'][:10])
+
+    print('faces')
+    print(mesh['faces'][:10])
+
+
+def make_plane(nx, ny, z):
+    def coord(n, i):
+        return -n / 2. + i
+
+    def crange(n):
+        return coord(n, 0), coord(n, n)
+
+    def point(i, j):
+        return coord(nx, j), coord(ny, ny - i), z
+
+    points = {}
+    faces = []
+
+    def append_vertex(p):
+        try:
+            i = points[p]
+        except KeyError:
+            i = points[p] = len(points)
+        return i
+
+    def append_face(*points):
+        faces.append(tuple(append_vertex(p) for p in points))
+
+    for i in xrange(ny):
+        for j in xrange(nx):
+            p00 = point(i    , j    )
+            p01 = point(i    , j + 1)
+            p10 = point(i + 1, j    )
+            p11 = point(i + 1, j + 1)
+            append_face(p00, p01, p10)
+            append_face(p11, p10, p01)
+
+    vertices = [None] * len(points)
+    for p, i in points.items():
+        assert vertices[i] is None
+        vertices[i] = p
+
+    return {
+        'vertices' : vertices,
+        'faces' : faces,
+        'x_range': crange(nx),
+        'y_range': crange(ny)
+    }
+
+
+def render_mesh(image, projection, mesh, translation):
+    mesh2 = {
+        'vertices': mesh['vertices'],
+        'faces': [tuple(v + 1 for v in f) for f in mesh['faces']]
+    }
+    RenderMesh(image, projection, mesh2, translation)
+
+
+def show_plane():
+    mesh = make_plane(5, 10, -30)
+
+    width = 1024
+    height = 1024
+
+    projection = CameraProjection(width=width, height=height, fl=18)
+
+    image = numpy.zeros((height, width, 3), numpy.uint8)
+    image[:] = (255, 255, 255)
+
+    render_mesh(image, projection, mesh, translation=(0, 0, 100))
+
+    try:
+        cv2.imshow('Image', image)
+        cv2.waitKey(0)
+    finally:
+        cv2.destroyAllWindows()
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('command', help='command to run')
+    args = parser.parse_args()
+
+    if args.command == 'show_json':
+        show_json()
+    elif args.command == 'show_mesh':
+        show_mesh()
+    elif args.command == 'show_plane':
+        show_plane()
+    else:
+        print('Unknown command')
+
+
+if __name__ == '__main__':
+    main()
