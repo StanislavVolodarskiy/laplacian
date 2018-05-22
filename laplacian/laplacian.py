@@ -18,7 +18,7 @@ def area2(p1, p2, p3):
 
 
 def cot(a, b):
-    return a.dot(b) / norm(np.cross(a, b))
+    return np.dot(a, b) / norm(np.cross(a, b))
 
 
 class Normal(object):
@@ -41,9 +41,6 @@ class Normal(object):
         
         return (1. / (2 * a2)) * s
 
-    def jacobian(self, vertices):
-        return [g(vertices) for g in self._grads]
-
     def dependencies(self):
         return self._neighbours + [self._v]
 
@@ -54,9 +51,6 @@ class Normals(object):
 
     def __call__(self, vertices):
         return [n(vertices) for n in self._normals]
-
-    def jacobian(self, vertices):
-        return [n.jacobian(vertices) for n in self._normals]
 
     def dependencies(self):
         return [n.dependencies() for n in self._normals]
